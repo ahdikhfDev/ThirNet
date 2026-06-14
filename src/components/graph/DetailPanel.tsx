@@ -62,6 +62,20 @@ export default function DetailPanel() {
 }
 
 function DeviceDetail({ device, issues }: { device: any; issues: IssueDef[] }) {
+
+  // Derive role badge
+  const p = device.protocols || {};
+  const getRole = () => {
+    if (device.vendor === 'linux') return { label: 'Server', color: '#f59e0b' };
+    const hasCore = p.ospf && p.mpls && !p.bgp;
+    const hasPE = !!p.bgp;
+    const hasRouter = !hasCore && !hasPE;
+    if (hasCore) return { label: 'Core', color: '#3b82f6' };
+    if (hasPE) return { label: 'PE', color: '#a855f7' };
+    return { label: 'Router', color: '#06b6d4' };
+  };
+  const role = getRole();
+
   return (
     <div className="p-3 space-y-4">
       {/* Header */}
@@ -69,12 +83,18 @@ function DeviceDetail({ device, issues }: { device: any; issues: IssueDef[] }) {
         <div className="flex items-center gap-2 mb-2">
           <Server size={16} className="text-sky-400" />
           <span className="font-semibold text-white">{device.hostname}</span>
+          <span
+            className="ml-auto rounded-full px-2 py-px text-[9px] font-bold uppercase"
+            style={{ backgroundColor: `${role.color}20`, color: role.color, border: `1px solid ${role.color}44` }}
+          >
+            {role.label}
+          </span>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="text-slate-400">Vendor <span className="text-slate-200">{device.vendor}</span></div>
-          <div className="text-slate-400">Role <span className="text-slate-200 capitalize">{device.role}</span></div>
+          <div className="text-slate-400">Vendor <span className="text-slate-200 uppercase">{device.vendor || '—'}</span></div>
           <div className="text-slate-400">Interfaces <span className="text-slate-200">{device.interfaces.length}</span></div>
           <div className="text-slate-400">Routes <span className="text-slate-200">{device.routes.length}</span></div>
+          <div className="text-slate-400">ASN <span className="text-slate-200">{device.bgp?.asn || '—'}</span></div>
         </div>
       </div>
 
@@ -113,33 +133,46 @@ function DeviceDetail({ device, issues }: { device: any; issues: IssueDef[] }) {
           <Network size={12} /> Interfaces ({device.interfaces.length})
         </h4>
         <div className="space-y-1">
-          {device.interfaces.map((iface: any) => (
-            <div key={iface.id} className="bg-slate-800 rounded p-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-200 font-mono">{iface.name}</span>
-                <span className={iface.enabled ? 'text-emerald-400' : 'text-slate-500'}>
-                  {iface.enabled ? 'up' : 'down'}
-                </span>
-              </div>
-              <div className="mt-1 space-y-0.5">
-                {iface.addresses.map((addr: any, i: number) => (
-                  <div key={i} className="text-xs font-mono text-sky-400">
-                    {addr.address}/{addr.prefixLength}
-                    <span className="text-slate-500 ml-1">{addr.network}</span>
+          {device.interfaces.map((iface: any) => {
+            const hasVlan = iface.vlanId;
+            const hasAddresses = iface.addresses.length > 0;
+            return (
+              <div key={iface.id} className="bg-slate-800 rounded p-2">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-200 font-mono font-medium">{iface.name}</span>
+                    {hasVlan && (
+                      <span className="rounded bg-orange-500/15 px-1 py-px text-[9px] font-bold text-orange-400">VLAN{iface.vlanId !== true ? ` ${iface.vlanId}` : ''}</span>
+                    )}
                   </div>
-                ))}
-                {iface.addresses.length === 0 && (
-                  <div className="text-[10px] text-slate-600 italic">no IP assigned</div>
+                  <span className={iface.enabled !== false ? 'text-emerald-400' : 'text-slate-500'}>
+                    {iface.enabled !== false ? 'up' : 'down'}
+                  </span>
+                </div>
+                <div className="mt-1 space-y-0.5">
+                  {iface.addresses.map((addr: any, i: number) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <div className="text-xs font-mono text-sky-400">
+                        {addr.address}/{addr.prefixLength}
+                      </div>
+                      {addr.network && (
+                        <div className="text-[10px] text-slate-500">→ {addr.network}</div>
+                      )}
+                    </div>
+                  ))}
+                  {iface.addresses.length === 0 && (
+                    <div className="text-[10px] text-slate-600 italic">no IP</div>
+                  )}
+                </div>
+                {(iface.mtu || iface.description) && (
+                  <div className="flex gap-3 mt-1">
+                    {iface.mtu && <span className="text-[10px] text-slate-500">MTU: {iface.mtu}</span>}
+                    {iface.description && <span className="text-[10px] text-slate-500 truncate">{iface.description}</span>}
+                  </div>
                 )}
               </div>
-              {iface.mtu && (
-                <div className="text-[10px] text-slate-500 mt-1">MTU: {iface.mtu}</div>
-              )}
-              {iface.vlanId && (
-                <div className="text-[10px] text-slate-500">VLAN: {iface.vlanId}</div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -161,7 +194,7 @@ function DeviceDetail({ device, issues }: { device: any; issues: IssueDef[] }) {
       )}
 
       {/* Routing Protocols */}
-      {(device.ospf || device.bgp) && (
+      {(device.ospf || device.bgp || device.mpls || device.rip) && (
         <div>
           <h4 className="text-xs font-semibold text-slate-400 mb-2 flex items-center gap-1">
             <Shield size={12} /> Routing
@@ -174,8 +207,18 @@ function DeviceDetail({ device, issues }: { device: any; issues: IssueDef[] }) {
                   Router-ID: {device.ospf.routerId || '—'}
                 </div>
                 {device.ospf.areas && (
-                  <div className="text-[10px] text-slate-400">
-                    Areas: {device.ospf.areas.map((a: any) => a.areaId).join(', ')}
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    Areas: {device.ospf.areas.map((a: any) => `${a.areaId}${a.name ? ` (${a.name})` : ''}`).join(', ')}
+                  </div>
+                )}
+              </div>
+            )}
+            {device.rip && (
+              <div className="bg-slate-800 rounded p-2">
+                <div className="text-xs text-green-400 font-medium">RIP</div>
+                {device.rip.networks && (
+                  <div className="text-[10px] text-slate-400 mt-1">
+                    Networks: {device.rip.networks.join(', ')}
                   </div>
                 )}
               </div>
@@ -187,8 +230,27 @@ function DeviceDetail({ device, issues }: { device: any; issues: IssueDef[] }) {
                   ASN: {device.bgp.asn} · Router-ID: {device.bgp.routerId || '—'}
                 </div>
                 {device.bgp.neighbors?.length > 0 && (
+                  <div className="space-y-1 mt-1">
+                    {device.bgp.neighbors.map((n: any, i: number) => (
+                      <div key={i} className="text-[10px] text-slate-400 font-mono bg-slate-900/50 rounded px-1.5 py-1">
+                        {n.address} <span className="text-slate-500">AS{n.remoteAsn}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {device.mpls && (
+              <div className="bg-slate-800 rounded p-2">
+                <div className="text-xs text-cyan-400 font-medium">MPLS</div>
+                {device.mpls.labelRange && (
                   <div className="text-[10px] text-slate-400 mt-1">
-                    Peers: {device.bgp.neighbors.map((n: any) => `${n.address}(AS${n.remoteAsn})`).join(', ')}
+                    Labels: {device.mpls.labelRange}
+                  </div>
+                )}
+                {device.mpls.interfaces?.length > 0 && (
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    Enabled interfaces: {device.mpls.interfaces.length}
                   </div>
                 )}
               </div>
