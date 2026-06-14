@@ -17,10 +17,10 @@ import {
 } from '@xyflow/react';
 import { toPng } from 'html-to-image';
 import '@xyflow/react/dist/style.css';
+import './topo-animations.css';
 
 import { NODE_TYPES } from './nodes/CustomNodes';
 import { useProjectStore } from '@/lib/store/useProjectStore';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   RotateCcw,
@@ -30,7 +30,11 @@ import {
   Maximize,
   LayoutGrid,
   Camera,
+  Route,
+  X,
+  Zap,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function TopologyCanvas() {
   const {
@@ -44,6 +48,12 @@ export default function TopologyCanvas() {
     validation,
     topology,
     projectName,
+  pathEdgeIds,
+    pathNodeIds,
+    findPath,
+    clearPath,
+    traceSourceId,
+    setTraceSourceId,
   } = useProjectStore();
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -68,19 +78,27 @@ export default function TopologyCanvas() {
 
   // Merge issues into edges for status display
   const edgesWithStatus = useMemo(() => {
-    if (!validation) return layoutedEdges;
+    const pathSet = new Set(pathEdgeIds || []);
     return layoutedEdges.map(edge => {
-      const edgeIssues = validation.issues.filter(i => i.edgeId === edge.id);
+      const isOnPath = pathSet.has(edge.id);
+      const edgeIssues = validation?.issues.filter(i => i.edgeId === edge.id) || [];
       const errors = edgeIssues.filter(i => i.severity === 'error').length;
       const warnings = edgeIssues.filter(i => i.severity === 'warning').length;
-      const color = errors > 0 ? '#ef4444' : warnings > 0 ? '#f59e0b' : edge.style?.stroke as string || '#22c55e';
+
+      let color = edge.style?.stroke as string || '#22c55e';
+      let width = 2;
+      if (isOnPath) { color = '#fbbf24'; width = 3; }
+      else if (errors > 0) { color = '#ef4444'; width = 3; }
+      else if (warnings > 0) { color = '#f59e0b'; width = 2.5; }
+
       return {
         ...edge,
-        style: { ...edge.style, stroke: color, strokeWidth: errors > 0 ? 3 : warnings > 0 ? 2.5 : 2 },
-        animated: errors > 0 || warnings > 0,
+        style: { ...edge.style, stroke: color, strokeWidth: width },
+        animated: isOnPath || errors > 0 || warnings > 0,
+        className: isOnPath ? 'path-edge' : '',
       };
     });
-  }, [layoutedEdges, validation]);
+  }, [layoutedEdges, validation, pathEdgeIds]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(nodesWithStatus);
   const [edges, setEdges, onEdgesChange] = useEdgesState(edgesWithStatus);
@@ -103,6 +121,21 @@ export default function TopologyCanvas() {
     selectNode(null);
     selectEdge(null);
   }, [selectNode, selectEdge]);
+
+  // Path trace helper
+  const handleTraceFrom = useCallback(() => {
+    if (!selectedNodeId) return;
+    if (traceSourceId && traceSourceId !== selectedNodeId) {
+      findPath(traceSourceId, selectedNodeId);
+    } else {
+      setTraceSourceId(selectedNodeId);
+    }
+  }, [selectedNodeId, traceSourceId, findPath]);
+
+  const handleClearPath = useCallback(() => {
+    clearPath();
+    setTraceSourceId(null);
+  }, [clearPath]);
 
   const handleDownloadPng = useCallback(async () => {
     try {
@@ -173,7 +206,7 @@ export default function TopologyCanvas() {
           style={{ border: '1px solid #334155' } as any}
         />
 
-        <Panel position="top-right" className="flex gap-2">
+        <Panel position="top-right" className="flex gap-2 items-start">
           <Button
             variant="outline"
             size="sm"
@@ -183,6 +216,38 @@ export default function TopologyCanvas() {
           >
             <Camera size={14} />
           </Button>
+          {/* Trace controls */}
+          {pathEdgeIds.length > 0 ? (
+            <div className="bg-slate-900 border border-amber-700 rounded-lg px-2 py-1 flex items-center gap-1.5 shadow-lg shadow-amber-900/20">
+              <span className="text-[10px] text-amber-400 font-medium">
+                Path: {pathNodeIds.length} hops
+              </span>
+              <Button variant="ghost" size="sm" onClick={handleClearPath} className="text-amber-400 hover:text-amber-300 h-6 px-1">
+                <X size={12} />
+              </Button>
+            </div>
+          ) : traceSourceId ? (
+            <div className="bg-slate-900 border border-amber-700/50 rounded-lg px-2 py-1 flex items-center gap-1.5">
+              <Route size={12} className="text-amber-400" />
+              <span className="text-[10px] text-amber-400">
+                Click target device
+              </span>
+              <Button variant="ghost" size="sm" onClick={handleClearPath} className="text-amber-400 hover:text-amber-300 h-6 px-1">
+                <X size={12} />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTraceFrom}
+              disabled={!selectedNodeId}
+              className="bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
+              title="Start trace from selected device"
+            >
+              <Route size={14} />
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"

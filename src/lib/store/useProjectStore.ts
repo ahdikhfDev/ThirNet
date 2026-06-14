@@ -4,10 +4,8 @@ import type {
   ParsedDevice,
   TopologyGraph,
   ValidationResult,
-  ParsedDevice as PD,
   TopoNode,
   TopoEdge,
-  LinkEndpoint,
 } from '../parsers/types';
 import { parseRouterOSConfig } from '../parsers/routeros';
 import { parseLinuxConfig } from '../parsers/linux';
@@ -15,9 +13,9 @@ import { splitMultiDevice } from '../parsers/splitMultiDevice';
 import { buildTopology } from '../topology/buildTopology';
 import { applyLayout } from '../topology/layout';
 import { runAllValidation } from '../validators/runAll';
+import { findPath } from '../topology/findPath';
 import type { IssueDef } from '../validators/types';
 import type { Node, Edge } from '@xyflow/react';
-import { v4 as uuid } from 'uuid';
 
 interface ProjectState {
   // Meta
@@ -42,6 +40,13 @@ interface ProjectState {
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
 
+  // Path trace (ping/trace animation)
+  pathSourceId: string | null;
+  pathTargetId: string | null;
+  pathNodeIds: string[];
+  pathEdgeIds: string[];
+  traceSourceId: string | null;
+
   // UI state
   autoValidate: boolean;
 
@@ -55,6 +60,9 @@ interface ProjectState {
 
   selectNode: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
+  findPath: (sourceId: string, targetId: string) => void;
+  clearPath: () => void;
+  setTraceSourceId: (id: string | null) => void;
 
   addRawConfig: (block: RawConfigBlock) => void;
   removeRawConfig: (id: string) => void;
@@ -79,6 +87,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   layoutedEdges: [],
   selectedNodeId: null,
   selectedEdgeId: null,
+  pathSourceId: null,
+  pathTargetId: null,
+  pathNodeIds: [],
+  pathEdgeIds: [],
+  traceSourceId: null,
   autoValidate: true,
 
   setRawConfigText: (text) => set({ rawConfigText: text }),
@@ -87,6 +100,36 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   selectNode: (id) => set({ selectedNodeId: id, selectedEdgeId: null }),
   selectEdge: (id) => set({ selectedEdgeId: id, selectedNodeId: null }),
+
+  findPath: (sourceId, targetId) => {
+    const { topology } = get();
+    if (!topology) return;
+    const result = findPath(topology.edges, sourceId, targetId);
+    if (result) {
+      set({
+        pathSourceId: sourceId,
+        pathTargetId: targetId,
+        pathNodeIds: result.pathNodeIds,
+        pathEdgeIds: result.pathEdgeIds,
+      });
+    } else {
+      set({
+        pathSourceId: sourceId,
+        pathTargetId: targetId,
+        pathNodeIds: [],
+        pathEdgeIds: [],
+      });
+    }
+  },
+
+  clearPath: () => set({
+    pathSourceId: null,
+    pathTargetId: null,
+    pathNodeIds: [],
+    pathEdgeIds: [],
+  }),
+
+  setTraceSourceId: (id: string | null) => set({ traceSourceId: id, pathSourceId: null, pathTargetId: null, pathNodeIds: [], pathEdgeIds: [] }),
 
   clearAll: () => set({
     rawConfigText: '',
@@ -98,6 +141,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     layoutedEdges: [],
     selectedNodeId: null,
     selectedEdgeId: null,
+    pathSourceId: null,
+    pathTargetId: null,
+    pathNodeIds: [],
+    pathEdgeIds: [],
   }),
 
   parseAndValidate: async () => {

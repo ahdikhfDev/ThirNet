@@ -1,0 +1,30 @@
+@keyframes packet-flow {
+  0% { stroke-dashoffset: 20; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px #fbbf24); }
+  50% { filter: drop-shadow(0 0 8px #f59e0b); }
+}
+
+.react-flow__edge.path-edge .react-flow__edge-path {
+  animation: packet-flow 0.6s linear infinite !important;
+  stroke-dasharray: 8 4;
+}
+
+.react-flow__edge.path-edge {
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+/* Path node glow */
+.react-flow__node.path-source .react-flow__node-default,
+.react-flow__node.path-target .react-flow__node-default {
+  box-shadow: 0 0 12px #fbbf2444;
+  border-color: #fbbf24;
+}
+
+/* Trace mode cursor */
+.trace-mode {
+  cursor: crosshair !important;
+}
