@@ -1,0 +1,224 @@
+# ============================================================
+#  NetThir Sample: 17-Node ISP + Linux Server Topology
+#  Core (C1/C2/C3) + Provider Edge (PE-1/PE-2/PE-3)
+#  + Customer Edge (IPB/UI) + Linux Servers
+# ============================================================
+
+### 1.-PC-Server-UI-DEPOK-SYSLOG-SERVER---UI
+auto lo
+iface lo inet loopback
+auto eth0
+iface eth0 inet static
+    address 152.100.13.66
+    netmask 255.255.255.192
+    gateway 152.100.13.65
+
+### 2.-PC-Server-UI-SALEMBA-SNMP-COLLECTOR---UI
+auto lo
+iface lo inet loopback
+auto eth0
+iface eth0 inet static
+    address 152.100.13.130
+    netmask 255.255.255.192
+    gateway 152.100.13.129
+
+### 3.-PC-Server-IPB-DRAMAGA-SNMP-COLLECTOR---IPB
+auto lo
+iface lo inet loopback
+auto eth0
+iface eth0 inet static
+    address 172.16.13.66
+    netmask 255.255.255.192
+    gateway 172.16.13.65
+
+### 4.-PC-Server-IPB-BARANANGSIANG-SYSLOG-SERVER-IPB
+auto lo
+iface lo inet loopback
+auto eth0
+iface eth0 inet static
+    address 172.16.13.130
+    netmask 255.255.255.192
+    gateway 172.16.13.129
+
+### 5.-PC-Server-IPB-DIPLOMA-NETFLOW-COLLECTOR-IPB
+auto lo
+iface lo inet loopback
+auto eth0
+iface eth0 inet static
+    address 172.16.13.194
+    netmask 255.255.255.192
+    gateway 172.16.13.193
+
+### 6.-PC-Server-NETFLOW-Collector-(IPB-Dramaga-Network)
+auto lo
+iface lo inet loopback
+auto eth0
+iface eth0 inet static
+    address 172.16.13.67
+    netmask 255.255.255.192
+    gateway 172.16.13.65
+
+### ROUTER-C1
+/interface bridge add name=lo
+/ip address
+add address=10.10.13.1/32 interface=lo
+add address=10.100.13.1/30 interface=ether1
+add address=10.100.13.5/30 interface=ether2
+add address=10.100.13.14/30 interface=ether3
+/routing ospf instance add name=ospf1 router-id=10.10.13.1
+/routing ospf area add instance=ospf1 name=backbone area-id=0.0.0.0
+/routing ospf interface-template add area=backbone networks=10.10.13.1/32
+/routing ospf interface-template add area=backbone networks=10.100.13.0/30
+/routing ospf interface-template add area=backbone networks=10.100.13.4/30
+/routing ospf interface-template add area=backbone networks=10.100.13.12/30
+/mpls ldp add lsr-id=10.10.13.1 transport-address=10.10.13.1
+/mpls ldp interface add interface=ether1
+/mpls ldp interface add interface=ether2
+/mpls ldp interface add interface=ether3
+
+### ROUTER-C2
+/interface bridge add name=lo
+/ip address
+add address=10.10.13.2/32 interface=lo
+add address=10.100.13.2/30 interface=ether1
+add address=10.100.13.9/30 interface=ether2
+add address=10.100.13.17/30 interface=ether3
+/routing ospf instance add name=ospf1 router-id=10.10.13.2
+/routing ospf area add instance=ospf1 name=backbone area-id=0.0.0.0
+/routing ospf interface-template add area=backbone networks=10.10.13.2/32
+/routing ospf interface-template add area=backbone networks=10.100.13.0/30
+/routing ospf interface-template add area=backbone networks=10.100.13.8/30
+/routing ospf interface-template add area=backbone networks=10.100.13.16/30
+/mpls ldp add lsr-id=10.10.13.2 transport-address=10.10.13.2
+/mpls ldp interface add interface=ether1
+/mpls ldp interface add interface=ether2
+/mpls ldp interface add interface=ether3
+
+### ROUTER-C3
+/interface bridge add name=lo
+/ip address
+add address=10.10.13.3/32 interface=lo
+add address=10.100.13.6/30 interface=ether1
+add address=10.100.13.10/30 interface=ether2
+add address=10.100.13.21/30 interface=ether3
+/routing ospf instance add name=ospf1 router-id=10.10.13.3
+/routing ospf area add instance=ospf1 name=backbone area-id=0.0.0.0
+/routing ospf interface-template add area=backbone networks=10.10.13.3/32
+/routing ospf interface-template add area=backbone networks=10.100.13.4/30
+/routing ospf interface-template add area=backbone networks=10.100.13.8/30
+/routing ospf interface-template add area=backbone networks=10.100.13.20/30
+/mpls ldp add lsr-id=10.10.13.3 transport-address=10.10.13.3
+/mpls ldp interface add interface=ether1
+/mpls ldp interface add interface=ether2
+/mpls ldp interface add interface=ether3
+
+### ROUTER-PE-1
+/interface bridge add name=lo
+/ip address
+add address=10.10.13.4/32 interface=lo
+add address=10.100.13.13/30 interface=ether1
+add address=10.100.13.25/30 interface=ether2
+/routing ospf instance add name=ospf1 router-id=10.10.13.4
+/routing ospf area add instance=ospf1 name=backbone area-id=0.0.0.0
+/routing ospf interface-template add area=backbone networks=10.10.13.4/32
+/routing ospf interface-template add area=backbone networks=10.100.13.12/30
+/mpls ldp add lsr-id=10.10.13.4 transport-address=10.10.13.4
+/mpls ldp interface add interface=ether1
+/routing bgp template add name=vpls-template as=77133 address-families=l2vpn
+/routing bgp connection add name=to-PE2 remote.address=10.10.13.5 remote.as=77133 local.address=10.10.13.4 templates=vpls-template local.role=ibgp
+/routing bgp connection add name=to-PE3 remote.address=10.10.13.6 remote.as=77133 local.address=10.10.13.4 templates=vpls-template local.role=ibgp
+/interface bridge add name=br-vpls-ipb
+/interface bridge port add bridge=br-vpls-ipb interface=ether3
+/routing bgp vpls add name=vpls-ipb bridge=br-vpls-ipb rd=10.10.13.4:20 export-route-targets=77133:20 import-route-targets=77133:20 site-id=1
+
+### ROUTER-PE-2
+/interface bridge add name=lo
+/ip address
+add address=10.10.13.5/32 interface=lo
+add address=10.100.13.18/30 interface=ether1
+/routing ospf instance add name=ospf1 router-id=10.10.13.5
+/routing ospf area add instance=ospf1 name=backbone area-id=0.0.0.0
+/routing ospf interface-template add area=backbone networks=10.10.13.5/32
+/routing ospf interface-template add area=backbone networks=10.100.13.16/30
+/mpls ldp add lsr-id=10.10.13.5 transport-address=10.10.13.5
+/mpls ldp interface add interface=ether1
+/routing bgp template add name=vpls-template as=77133 address-families=l2vpn
+/routing bgp connection add name=to-PE1 remote.address=10.10.13.4 remote.as=77133 local.address=10.10.13.5 templates=vpls-template local.role=ibgp
+/routing bgp connection add name=to-PE3 remote.address=10.10.13.6 remote.as=77133 local.address=10.10.13.5 templates=vpls-template local.role=ibgp
+/interface bridge add name=br-vpls-ui
+/interface bridge add name=br-vpls-ipb
+/interface bridge port add bridge=br-vpls-ui interface=ether2
+/interface bridge port add bridge=br-vpls-ipb interface=ether3
+/routing bgp vpls add name=vpls-ui bridge=br-vpls-ui rd=10.10.13.5:10 export-route-targets=77133:10 import-route-targets=77133:10 site-id=2
+/routing bgp vpls add name=vpls-ipb bridge=br-vpls-ipb rd=10.10.13.5:20 export-route-targets=77133:20 import-route-targets=77133:20 site-id=3
+
+### ROUTER-PE-3
+/interface bridge add name=lo
+/ip address
+add address=10.10.13.6/32 interface=lo
+add address=10.100.13.22/30 interface=ether1
+/routing ospf instance add name=ospf1 router-id=10.10.13.6
+/routing ospf area add instance=ospf1 name=backbone area-id=0.0.0.0
+/routing ospf interface-template add area=backbone networks=10.10.13.6/32
+/routing ospf interface-template add area=backbone networks=10.100.13.20/30
+/mpls ldp add lsr-id=10.10.13.6 transport-address=10.10.13.6
+/mpls ldp interface add interface=ether1
+/routing bgp template add name=vpls-template as=77133 address-families=l2vpn
+/routing bgp connection add name=to-PE1 remote.address=10.10.13.4 remote.as=77133 local.address=10.10.13.6 templates=vpls-template local.role=ibgp
+/routing bgp connection add name=to-PE2 remote.address=10.10.13.5 remote.as=77133 local.address=10.10.13.6 templates=vpls-template local.role=ibgp
+/interface bridge add name=br-vpls-ui
+/interface bridge add name=br-vpls-ipb
+/interface bridge port add bridge=br-vpls-ui interface=ether2
+/interface bridge port add bridge=br-vpls-ipb interface=ether3
+/routing bgp vpls add name=vpls-ui bridge=br-vpls-ui rd=10.10.13.6:10 export-route-targets=77133:10 import-route-targets=77133:10 site-id=4
+/routing bgp vpls add name=vpls-ipb bridge=br-vpls-ipb rd=10.10.13.6:20 export-route-targets=77133:20 import-route-targets=77133:20 site-id=5
+
+### IPB-DRAMAGA
+/ip address
+add address=172.16.13.1/29 interface=ether1
+add address=172.16.13.65/26 interface=ether2
+/routing rip instance add name=main redistribute=connected
+/routing rip interface-template
+add interfaces=ether1 instance=main
+add interfaces=ether2 instance=main
+add interfaces=ether3 instance=main
+
+### ROUTER-UI-DEPOK
+/ip address
+add address=152.100.13.1/30 interface=ether1
+add address=152.100.13.65/26 interface=ether2
+/routing rip instance add name=main redistribute=connected
+/routing rip interface-template
+add interfaces=ether1 instance=main
+add interfaces=ether2 instance=main
+add interfaces=ether3 instance=main
+
+### ROUTER-UI-SALEMBA
+/ip address
+add address=152.100.13.2/30 interface=ether1
+add address=152.100.13.129/26 interface=ether2
+/routing rip instance add name=main redistribute=connected
+/routing rip interface-template
+add interfaces=ether1 instance=main
+add interfaces=ether2 instance=main
+add interfaces=ether3 instance=main
+
+### ROUTER-IPB-BARANANGSIANG
+/ip address
+add address=172.16.13.2/29 interface=ether1
+add address=172.16.13.129/26 interface=ether2
+/routing rip instance add name=main redistribute=connected
+/routing rip interface-template
+add interfaces=ether1 instance=main
+add interfaces=ether2 instance=main
+add interfaces=ether3 instance=main
+
+### ROUTER-IPB-DIPLOMA
+/ip address
+add address=172.16.13.3/29 interface=ether1
+add address=172.16.13.193/26 interface=ether2
+/routing rip instance add name=main redistribute=connected
+/routing rip interface-template
+add interfaces=ether1 instance=main
+add interfaces=ether2 instance=main
+add interfaces=ether3 instance=main
