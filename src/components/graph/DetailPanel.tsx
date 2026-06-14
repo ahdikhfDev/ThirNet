@@ -63,15 +63,14 @@ export default function DetailPanel() {
 
 function DeviceDetail({ device, issues }: { device: any; issues: IssueDef[] }) {
 
-  // Derive role badge
-  const p = device.protocols || {};
+  // Derive role badge from device properties
   const getRole = () => {
     if (device.vendor === 'linux') return { label: 'Server', color: '#f59e0b' };
-    const hasCore = p.ospf && p.mpls && !p.bgp;
-    const hasPE = !!p.bgp;
+    const hasPE = !!(device.bgp);
+    const hasCore = !hasPE && !!(device.ospf && device.mpls);
     const hasRouter = !hasCore && !hasPE;
-    if (hasCore) return { label: 'Core', color: '#3b82f6' };
     if (hasPE) return { label: 'PE', color: '#a855f7' };
+    if (hasCore) return { label: 'Core', color: '#3b82f6' };
     return { label: 'Router', color: '#06b6d4' };
   };
   const role = getRole();
