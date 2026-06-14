@@ -39,10 +39,18 @@ const features = [
 ];
 
 const stats = [
-  { label: 'Vendors', value: '2+' },
-  { label: 'Rules', value: '16+' },
-  { label: 'Node Types', value: '7' },
-  { label: 'Zero Setup', value: '100%' },
+  { label: 'Vendors', value: '2' },
+  { label: 'Rules', value: '4+' },
+  { label: 'Node Types', value: '5' },
+  { label: 'Protocols', value: '5' },
+];
+
+const protocols = [
+  { name: 'OSPF', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  { name: 'BGP', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  { name: 'MPLS', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+  { name: 'RIP', color: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  { name: 'VLAN', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
 ];
 
 function AnimatedGrid() {
@@ -167,7 +175,7 @@ export default function Home() {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500" />
           </span>
-          v0.1 — Network Config Visualizer
+          v1.0 — Network Config Visualizer
         </div>
 
         <h1
@@ -226,6 +234,49 @@ export default function Home() {
             <div key={s.label} className="text-center">
               <div className="text-2xl font-bold text-sky-400 sm:text-3xl">{s.value}</div>
               <div className="mt-1 text-xs uppercase tracking-widest text-slate-500">{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Protocol Badges */}
+        <div
+          className={cn(
+            'mt-8 flex flex-wrap items-center justify-center gap-2 transition-all duration-700 delay-[600ms]',
+            mounted ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0',
+          )}
+        >
+          {protocols.map((p) => (
+            <span
+              key={p.name}
+              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${p.color}`}
+            >
+              {p.name}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="mx-auto max-w-5xl px-6 pt-20 pb-12">
+        <h2 className="mb-2 text-center text-2xl font-bold text-slate-100 sm:text-3xl">
+          How It <span className="text-sky-400">Works</span>
+        </h2>
+        <p className="mb-12 text-center text-sm text-slate-500">
+          Three steps from config to topology.
+        </p>
+
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+          {[
+            { step: '1', title: 'Paste Config', desc: 'Copy-paste RouterOS export or Linux ifupdown/netplan configs — or use the sample.' },
+            { step: '2', title: 'Parse & Build', desc: 'Auto-detect vendor, extract interfaces/IPs/routes, discover subnets, build graph.' },
+            { step: '3', title: 'Visualize', desc: 'Interactive topology map with role badges, edge labels, validation reports & export.' },
+          ].map((item) => (
+            <div key={item.step} className="group relative rounded-2xl border border-slate-800 bg-slate-900/30 p-6 text-center transition hover:border-sky-500/30">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-sky-500/10 text-lg font-bold text-sky-400 transition group-hover:bg-sky-500/20">
+                {item.step}
+              </div>
+              <h3 className="mb-2 font-semibold text-slate-200">{item.title}</h3>
+              <p className="text-sm leading-relaxed text-slate-500">{item.desc}</p>
             </div>
           ))}
         </div>
